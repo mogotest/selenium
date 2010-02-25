@@ -2771,12 +2771,10 @@ Selenium.prototype.doCaptureEntirePageScreenshot = function(filename, kwargs) {
      *                     (possibly obscuring black text).</dd>
      *                  </dl>
      */
-    if (! browserVersion.isChrome &&
-        ! (browserVersion.isIE && ! browserVersion.isHTA)) {
+    if (! browserVersion.isChrome && ! browserVersion.isIE) {
         throw new SeleniumError('captureEntirePageScreenshot is only '
             + 'implemented for Firefox ("firefox" or "chrome", NOT '
-            + '"firefoxproxy") and IE non-HTA ("iexploreproxy", NOT "iexplore" '
-            + 'or "iehta"). The current browser isn\'t one of them!');
+            + '"firefoxproxy") and IE. The current browser isn\'t one of them!');
     }
     
     // do or do not ... there is no try
@@ -2812,43 +2810,27 @@ Selenium.prototype.doCaptureEntirePageScreenshot = function(filename, kwargs) {
             }
         }
         else {
-            // multi-window mode
-            if (!this.snapsieSrc) {
-                // XXX - cache snapsie, and capture the screenshot as a
-                // callback. Definitely a hack, because we may be late taking
-                // the first screenshot, but saves us from polluting other code
-                // for now. I wish there were an easier way to get at the
-                // contents of a referenced script!
-                var snapsieUrl = (this.browserbot.buttonWindow.location.href)
-                    .replace(/(Test|Remote)Runner\.html/, 'lib/snapsie.js');
-                var self = this;
-                new Ajax.Request(snapsieUrl, {
-                    method: 'get'
-                    , onSuccess: function(transport) {
-                        self.snapsieSrc = transport.responseText;
-                        self.doCaptureEntirePageScreenshot(filename, kwargs);
-                    }
-                });
-                return;
-            }
-
             // it's going into a string, so escape the backslashes
+            filename = filename.replace(/\//g, '\\');
+            filename = filename.replace(/\\\\/g, '\\');
             filename = filename.replace(/\\/g, '\\\\');
+
+            var scriptContent = ''
+              + 'try {'
+              + '    var nativeObj = new ActiveXObject("Snapsie.CoSnapsie");'
+              + '    nativeObj.saveSnapshot("' + filename + '", 0, 0, 0, 0, 0, 0, 0, 0, 0);'
+              + '}'
+              + 'catch (e) {'
+              + '   document.getElementById("takeScreenshot").failure = e.message;'
+              + '}';
             
             // this is sort of hackish. We insert a script into the document,
             // and remove it before anyone notices.
             var doc = selenium.browserbot.getDocument();
-            var script = doc.createElement('script'); 
-            var scriptContent = this.snapsieSrc 
-                + 'try {'
-                + '    new Snapsie().saveSnapshot("' + filename + '");'
-                + '}'
-                + 'catch (e) {'
-                + '    document.getElementById("takeScreenshot").failure ='
-                + '        e.message;'
-                + '}';
+
+            var script = doc.createElement('script');
             script.id = 'takeScreenshot';
-            script.language = 'javascript';
+            script.type = 'text/javascript';
             script.text = scriptContent;
             doc.body.appendChild(script);
             script.parentNode.removeChild(script);
