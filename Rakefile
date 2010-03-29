@@ -12,6 +12,7 @@ require 'rake-tasks/iphone'
 require 'rake-tasks/selenium'
 require 'rake-tasks/mozilla'
 require 'rake-tasks/ruby'
+require 'rake-tasks/se1'
 require 'rake-tasks/se-ide'
 require 'rake-tasks/ie_code_generator'
 
